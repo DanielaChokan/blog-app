@@ -1,0 +1,101 @@
+.empty {
+	font-size: 0.875rem;
+	color: #6b7280;
+	padding: 0.5rem 0;
+}
+
+.list {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.75rem;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.card {
+	border: 1px solid #e5e7eb;
+	border-radius: 0.75rem;
+	padding: 1rem;
+	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+	background: #ffffff;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.card:hover {
+	border-color: #d1d5db;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+
+.cardTitle {
+	margin: 0;
+	font-size: 1.125rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.meta {
+	margin: 0.25rem 0 0;
+	font-size: 0.875rem;
+	color: #6b7280;
+}
+
+.excerpt {
+	margin: 0.625rem 0 0;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	min-height: 4.2em;
+	display: -webkit-box;
+	line-clamp: 3;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+
+.actions {
+	margin-top: auto;
+	padding-top: 0.875rem;
+	display: flex;
+	gap: 0.5rem;
+}
+
+.detailLink {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.375rem;
+	background: #111827;
+	color: #ffffff;
+	padding: 0.42rem 0.78rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.detailLink:hover {
+	background: #1f2937;
+}
+
+.deleteButton {
+	border: 1px solid #ef4444;
+	border-radius: 0.375rem;
+	background: #fef2f2;
+	color: #b91c1c;
+	padding: 0.42rem 0.78rem;
+	font-size: 0.875rem;
+	font: inherit;
+}
+
+.deleteButton:hover {
+	background: #fee2e2;
+	border-color: #f87171;
+}
+
+@media (min-width: 768px) {
+	.list {
+		grid-template-columns: 1fr 1fr;
+	}
+}
