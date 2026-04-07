@@ -13,7 +13,7 @@ Blog Appis a single-page blog application where you can:
 
 ## 2. Technology Stack
 
-- Next.js 15 (App Router)
+- Next.js 16 (App Router)
 - React 19
 - TypeScript
 - Redux Toolkit + React Redux
@@ -83,7 +83,8 @@ Current tests cover:
 - basic validation of the post Zod schema;
 - form validation for creating a post with empty fields.
 
-## 6. GitHub Repository
+## 6. GitHub + Vercel
 
-https://github.com/DanielaChokan/blog-app.git
+[Source Code](https://github.com/DanielaChokan/blog-app.git)
 
+[Live Demo](https://blog-app-six-gold.vercel.app/)
