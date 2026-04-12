@@ -4,13 +4,17 @@ import { useMemo, useState, type SubmitEvent } from "react";
 import { createPostSchema } from "@/lib/zod-schemas";
 import { createPostThunk } from "@/store/slices/postsSlice";
 import { useAppDispatch } from "@/store/hooks";
+import { useAuthUser } from "@/lib/use-auth-user";
 import { flattenError } from "zod";
 import styles from "./PostForm.module.css";
 
-type Errors = Partial<Record<"title" | "content" | "author" | "tags", string>>;
+type Errors = Partial<
+	Record<"title" | "content" | "author" | "tags" | "form", string>
+>;
 
 export default function PostForm() {
 	const dispatch = useAppDispatch();
+	const { user, loading } = useAuthUser();
 	const [title, setTitle] = useState("");
 	const [content, setContent] = useState("");
 	const [author, setAuthor] = useState("");
@@ -26,6 +30,11 @@ export default function PostForm() {
 	async function onSubmit(e: SubmitEvent) {
 		e.preventDefault();
 
+		if (!user) {
+			setErrors({ form: "Please sign in to create a post." });
+			return;
+		}
+
 		const payload = { title, content, author, tags };
 		const parsed = createPostSchema.safeParse(payload);
 
@@ -36,6 +45,7 @@ export default function PostForm() {
 				content: f.content?.[0],
 				author: f.author?.[0],
 				tags: f.tags?.[0],
+				form: undefined,
 			});
 			return;
 		}
@@ -50,11 +60,13 @@ export default function PostForm() {
 			setTagsText("");
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Unknown error";
-			setErrors({ title: message });
+			setErrors({ form: message });
 		} finally {
 			setPending(false);
 		}
 	}
+
+	const disabled = pending || loading || !user;
 
 	return (
 		<form onSubmit={onSubmit} className={styles.form}>
@@ -103,12 +115,19 @@ export default function PostForm() {
 			</div>
 
 			<button
-				disabled={pending}
+				disabled={disabled}
 				type="submit"
 				className={styles.submitButton}
 			>
-				{pending ? "Creating..." : "Create"}
+				{pending
+					? "Creating..."
+					: loading
+					  ? "Checking auth..."
+					  : user
+						? "Create"
+						: "Sign in to create"}
 			</button>
+			{errors.form && <p className={styles.error}>{errors.form}</p>}
 		</form>
 	);
 }

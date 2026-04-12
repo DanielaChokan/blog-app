@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { commentsCollection, postsCollection } from "@/lib/firebase-admin";
 import { updatePostSchema } from "@/lib/zod-schemas";
 import { flattenError } from "zod";
+import { requireUser } from "@/lib/server-auth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -50,6 +51,7 @@ export async function GET(_: NextRequest, { params }: Params) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
     try {
+        const user = await requireUser(req);
         const { id } = await params;
         const postRef = postsCollection.doc(id);
         const postDoc = await postRef.get();
@@ -59,6 +61,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
                 { message: "Post not found" },
                 { status: 404 },
             );
+        }
+
+        const postData = postDoc.data() as { ownerId?: string };
+        if (!postData.ownerId || postData.ownerId !== user.uid) {
+            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
         }
 
         const body = await req.json();
@@ -83,6 +90,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             { status: 200 },
         );
     } catch (error) {
+        if (error instanceof Error && error.message === "UNAUTHORIZED") {
+            return NextResponse.json(
+                { message: "Unauthorized" },
+                { status: 401 },
+            );
+        }
         return NextResponse.json(
             { message: "Failed to update post", error: String(error) },
             { status: 500 },
@@ -90,8 +103,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
     try {
+        const user = await requireUser(req);
         const { id } = await params;
         const postRef = postsCollection.doc(id);
         const postDoc = await postRef.get();
@@ -101,6 +115,11 @@ export async function DELETE(_: NextRequest, { params }: Params) {
                 { message: "Post not found" },
                 { status: 404 },
             );
+        }
+
+        const postData = postDoc.data() as { ownerId?: string };
+        if (!postData.ownerId || postData.ownerId !== user.uid) {
+            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
         }
 
         const commentsSnap = await commentsCollection
@@ -114,6 +133,12 @@ export async function DELETE(_: NextRequest, { params }: Params) {
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {
+        if (error instanceof Error && error.message === "UNAUTHORIZED") {
+            return NextResponse.json(
+                { message: "Unauthorized" },
+                { status: 401 },
+            );
+        }
         return NextResponse.json(
             { message: "Failed to delete post", error: String(error) },
             { status: 500 },

@@ -5,6 +5,12 @@
 	padding: 1.25rem;
 }
 
+.authBar {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 1.5rem;
+}
+
 .loading {
 	margin: 0;
 	padding: 1.25rem;
@@ -32,5 +38,9 @@
 @media (min-width: 768px) {
 	.main {
 		padding: 2rem 2.25rem;
+	}
+
+	.authBar {
+		margin-bottom: 2rem;
 	}
 }

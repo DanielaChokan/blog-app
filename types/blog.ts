@@ -4,6 +4,7 @@ export type Post = {
 	content: string;
 	author: string;
 	tags: string[];
+	ownerId: string;
 	createdAt: string;
 	updatedAt: string;
 };

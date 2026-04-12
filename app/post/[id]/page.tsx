@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import PostDetail from "@/components/PostDetail";
+import AuthPanel from "@/components/AuthPanel";
 import { StoreProvider } from "@/store/provider";
 import { commentsCollection, postsCollection } from "@/lib/firebase-admin";
 import { Comment, Post, PostWithComments } from "@/types/blog";
@@ -35,6 +36,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
 	return (
 		<main className={styles.main}>
+			<div className={styles.authBar}>
+				<AuthPanel />
+			</div>
 			<StoreProvider initialPosts={[]} initialSelectedPost={post}>
 				<PostDetail id={id} />
 			</StoreProvider>

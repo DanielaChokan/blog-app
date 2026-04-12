@@ -4,14 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { deletePostThunk } from "@/store/slices/postsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAuthUser } from "@/lib/use-auth-user";
 import styles from "./PostList.module.css";
 
 export default function PostList() {
 	const dispatch = useAppDispatch();
+	const { user } = useAuthUser();
 	const { posts, filter } = useAppSelector((s) => s.posts);
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 
 	async function onDelete(postId: string) {
+		if (!user) return;
+
 		try {
 			setDeletingId(postId);
 			await dispatch(deletePostThunk(postId)).unwrap();
@@ -48,14 +52,16 @@ export default function PostList() {
 						>
 							Details
 						</Link>
-						<button
-							type="button"
-							onClick={() => onDelete(post.id)}
-							disabled={deletingId === post.id}
-							className={styles.deleteButton}
-						>
-							{deletingId === post.id ? "Deleting..." : "Delete"}
-						</button>
+						{post.ownerId === user?.uid && (
+							<button
+								type="button"
+								onClick={() => onDelete(post.id)}
+								disabled={deletingId === post.id}
+								className={styles.deleteButton}
+							>
+								{deletingId === post.id ? "Deleting..." : "Delete"}
+							</button>
+						)}
 					</div>
 				</li>
 			))}

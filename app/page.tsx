@@ -4,6 +4,7 @@ export const revalidate = 0;
 import PostFilters from "@/components/PostFilters";
 import PostForm from "@/components/PostForm";
 import PostList from "@/components/PostList";
+import AuthPanel from "@/components/AuthPanel";
 import { StoreProvider } from "@/store/provider";
 import { postsCollection } from "@/lib/firebase-admin";
 import { Post } from "@/types/blog";
@@ -24,9 +25,13 @@ export default async function HomePage() {
 
 	return (
 		<main className={styles.main}>
-			<h1 className={styles.title}> My Blog</h1>
+			<header className={styles.topBar}>
+				<h1 className={styles.title}>My Blog</h1>
+				<AuthPanel />
+			</header>
 
 			<StoreProvider initialPosts={initialPosts}>
+				<div id="auth-form-slot" className={styles.authFormSlot} />
 				<div className={styles.grid}>
 					<section>
 						<PostForm />

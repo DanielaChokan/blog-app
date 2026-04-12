@@ -6,6 +6,7 @@ import {
     PostWithComments,
     UpdatePostDto,
 } from "@/types/blog";
+import { clientAuth } from "@/lib/firebase-client";
 
 async function safeJson<T>(res: Response): Promise<T> {
     if (!res.ok) {
@@ -17,6 +18,12 @@ async function safeJson<T>(res: Response): Promise<T> {
     return res.json() as Promise<T>;
 }
 
+async function authHeaders(): Promise<Record<string, string>> {
+    const token = await clientAuth.currentUser?.getIdToken();
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+}
+
 export const apiClient = {
     async getPosts() {
         const res = await fetch("/api/posts", { method: "GET" });
@@ -26,7 +33,10 @@ export const apiClient = {
     async createPost(data: CreatePostDto) {
         const res = await fetch("/api/posts", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                ...(await authHeaders()),
+            },
             body: JSON.stringify(data),
         });
         return safeJson<Post>(res);
@@ -40,14 +50,20 @@ export const apiClient = {
     async updatePost(id: string, data: UpdatePostDto) {
         const res = await fetch(`/api/posts/${id}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                ...(await authHeaders()),
+            },
             body: JSON.stringify(data),
         });
         return safeJson<Post>(res);
     },
 
     async deletePost(id: string) {
-        const res = await fetch(`/api/posts/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/posts/${id}`, {
+            method: "DELETE",
+            headers: { ...(await authHeaders()) },
+        });
         return safeJson<{ ok: boolean }>(res);
     },
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPostSchema } from "@/lib/zod-schemas";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updatePostThunk } from "@/store/slices/postsSlice";
+import { useAuthUser } from "@/lib/use-auth-user";
 import { flattenError } from "zod";
 import CommentForm from "./CommentForm";
 import styles from "./PostDetail.module.css";
@@ -12,6 +13,7 @@ type EditErrors = Partial<Record<"title" | "content", string>>;
 
 export default function PostDetail({ id }: { id: string }) {
     const dispatch = useAppDispatch();
+    const { user } = useAuthUser();
     const { selectedPost: post, error } = useAppSelector((s) => s.posts);
 
     const [editing, setEditing] = useState(false);
@@ -21,7 +23,7 @@ export default function PostDetail({ id }: { id: string }) {
     const [errors, setErrors] = useState<EditErrors>({});
 
     function startEditing() {
-        if (!post) return;
+        if (!post || post.ownerId !== user?.uid) return;
         setTitle(post.title);
         setContent(post.content);
         setErrors({});
@@ -31,6 +33,11 @@ export default function PostDetail({ id }: { id: string }) {
     if (!post) return <p className={styles.error}>Post not found</p>;
 
     async function saveEdit() {
+        if (!post || post.ownerId !== user?.uid) {
+            setErrors({ title: "You can edit only your own post." });
+            return;
+        }
+
         const parsed = createPostSchema
             .pick({ title: true, content: true })
             .safeParse({
@@ -121,12 +128,14 @@ export default function PostDetail({ id }: { id: string }) {
                     <h1 className={styles.heading}>{post.title}</h1>
                     <p className={styles.meta}>Author: {post.author}</p>
                     <p className={styles.content}>{post.content}</p>
-                    <button
-                        onClick={startEditing}
-                        className={styles.editButton}
-                    >
-                        Edit
-                    </button>
+                    {post.ownerId === user?.uid && (
+                        <button
+                            onClick={startEditing}
+                            className={styles.editButton}
+                        >
+                            Edit
+                        </button>
+                    )}
                 </>
             )}
 
