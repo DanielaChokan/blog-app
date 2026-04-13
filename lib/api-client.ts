@@ -59,10 +59,14 @@ export const apiClient = {
         return safeJson<Post>(res);
     },
 
-    async deletePost(id: string) {
+    async deletePost(id: string, expectedVersion: number) {
         const res = await fetch(`/api/posts/${id}`, {
             method: "DELETE",
-            headers: { ...(await authHeaders()) },
+            headers: {
+                "Content-Type": "application/json",
+                ...(await authHeaders()),
+            },
+            body: JSON.stringify({ expectedVersion }),
         });
         return safeJson<{ ok: boolean }>(res);
     },

@@ -13,12 +13,12 @@ export default function PostList() {
 	const { posts, filter } = useAppSelector((s) => s.posts);
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 
-	async function onDelete(postId: string) {
+	async function onDelete(postId: string, expectedVersion: number) {
 		if (!user) return;
 
 		try {
 			setDeletingId(postId);
-			await dispatch(deletePostThunk(postId)).unwrap();
+			await dispatch(deletePostThunk({ id: postId, expectedVersion })).unwrap();
 		} finally {
 			setDeletingId(null);
 		}
@@ -55,7 +55,7 @@ export default function PostList() {
 						{post.ownerId === user?.uid && (
 							<button
 								type="button"
-								onClick={() => onDelete(post.id)}
+								onClick={() => onDelete(post.id, post.version)}
 								disabled={deletingId === post.id}
 								className={styles.deleteButton}
 							>

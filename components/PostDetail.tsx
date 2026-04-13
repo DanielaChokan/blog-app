@@ -57,7 +57,15 @@ export default function PostDetail({ id }: { id: string }) {
         setErrors({});
         try {
             setSaving(true);
-            await dispatch(updatePostThunk({ id, data: parsed.data })).unwrap();
+            await dispatch(
+                updatePostThunk({
+                    id,
+                    data: {
+                        ...parsed.data,
+                        expectedVersion: post.version,
+                    },
+                }),
+            ).unwrap();
             setEditing(false);
         } finally {
             setSaving(false);

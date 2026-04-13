@@ -24,9 +24,16 @@ export const createPostSchema = z.object({
 
 export const updatePostSchema = createPostSchema
     .partial()
-    .refine((value) => Object.keys(value).length > 0, {
-        message: "At least one field must be provided",
+    .extend({
+		expectedVersion: z.number().int().positive(),
+	})
+    .refine((value) => Object.keys(value).length > 1, {
+        message: "At least one field and expectedVersion must be provided",
     });
+
+export const deletePostSchema = z.object({
+    expectedVersion: z.number().int().positive(),
+});
 
 export const createCommentSchema = z.object({
     author: z.string().min(2).max(60),
@@ -35,4 +42,5 @@ export const createCommentSchema = z.object({
 
 export type CreatePostSchemaType = z.infer<typeof createPostSchema>;
 export type UpdatePostSchemaType = z.infer<typeof updatePostSchema>;
+export type DeletePostSchemaType = z.infer<typeof deletePostSchema>;
 export type CreateCommentSchemaType = z.infer<typeof createCommentSchema>;

@@ -5,6 +5,7 @@ export type Post = {
 	author: string;
 	tags: string[];
 	ownerId: string;
+	version: number;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -27,7 +28,9 @@ export type CreatePostDto = {
 	tags: string[];
 };
 
-export type UpdatePostDto = Partial<CreatePostDto>;
+export type UpdatePostDto = Partial<CreatePostDto> & {
+	expectedVersion: number;
+};
 
 export type CreateCommentDto = {
 	author: string;

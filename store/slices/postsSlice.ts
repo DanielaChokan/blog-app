@@ -49,8 +49,8 @@ export const updatePostThunk = createAsyncThunk(
 
 export const deletePostThunk = createAsyncThunk(
     "posts/delete",
-    async (id: string) => {
-        await apiClient.deletePost(id);
+    async ({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
+        await apiClient.deletePost(id, expectedVersion);
         return id;
     },
 );

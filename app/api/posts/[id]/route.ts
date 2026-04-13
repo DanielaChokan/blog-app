@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { commentsCollection, postsCollection } from "@/lib/firebase-admin";
-import { updatePostSchema } from "@/lib/zod-schemas";
+import { deletePostSchema, updatePostSchema } from "@/lib/zod-schemas";
 import { flattenError } from "zod";
 import { requireUser } from "@/lib/server-auth";
 
@@ -37,8 +37,14 @@ export async function GET(_: NextRequest, { params }: Params) {
                 return aCreatedAt.localeCompare(bCreatedAt);
             });
 
+        const postData = postDoc.data() as { version?: number };
         return NextResponse.json(
-            { id: postDoc.id, ...postDoc.data(), comments },
+            {
+                id: postDoc.id,
+                ...postData,
+                version: postData.version ?? 1,
+                comments,
+            },
             { status: 200 },
         );
     } catch (error) {
@@ -54,20 +60,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         const user = await requireUser(req);
         const { id } = await params;
         const postRef = postsCollection.doc(id);
-        const postDoc = await postRef.get();
-
-        if (!postDoc.exists) {
-            return NextResponse.json(
-                { message: "Post not found" },
-                { status: 404 },
-            );
-        }
-
-        const postData = postDoc.data() as { ownerId?: string };
-        if (!postData.ownerId || postData.ownerId !== user.uid) {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-        }
-
         const body = await req.json();
         const parsed = updatePostSchema.safeParse(body);
 
@@ -79,14 +71,61 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             );
         }
 
-        await postRef.update({
-            ...parsed.data,
-            updatedAt: new Date().toISOString(),
+        const result = await postsCollection.firestore.runTransaction(async (tx) => {
+            const snap = await tx.get(postRef);
+            if (!snap.exists) {
+                return { type: "NOT_FOUND" as const };
+            }
+
+            const current = snap.data() as { ownerId?: string; version?: number };
+            const currentVersion = current.version ?? 1;
+
+            if (current.ownerId !== user.uid) {
+                return { type: "FORBIDDEN" as const };
+            }
+
+            if (currentVersion !== parsed.data.expectedVersion) {
+                return {
+                    type: "CONFLICT" as const,
+                    currentVersion,
+                };
+            }
+
+            const now = new Date().toISOString();
+            const { expectedVersion, ...nextData } = parsed.data;
+            void expectedVersion;
+
+            tx.update(postRef, {
+                ...nextData,
+                updatedAt: now,
+                version: currentVersion + 1,
+            });
+
+            return { type: "OK" as const };
         });
 
+        if (result.type === "NOT_FOUND") {
+            return NextResponse.json({ message: "Post not found" }, { status: 404 });
+        }
+
+        if (result.type === "FORBIDDEN") {
+            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        }
+
+        if (result.type === "CONFLICT") {
+            return NextResponse.json(
+                {
+                    message: "Post was changed in another session",
+                    currentVersion: result.currentVersion,
+                },
+                { status: 409 },
+            );
+        }
+
         const updated = await postRef.get();
+        const updatedData = updated.data() as { version?: number };
         return NextResponse.json(
-            { id: updated.id, ...updated.data() },
+            { id: updated.id, ...updatedData, version: updatedData.version ?? 1 },
             { status: 200 },
         );
     } catch (error) {
@@ -108,27 +147,66 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         const user = await requireUser(req);
         const { id } = await params;
         const postRef = postsCollection.doc(id);
-        const postDoc = await postRef.get();
 
-        if (!postDoc.exists) {
+        const body = await req.json().catch(() => null);
+        const parsed = deletePostSchema.safeParse(body);
+
+        if (!parsed.success) {
+            const errors = flattenError(parsed.error);
             return NextResponse.json(
-                { message: "Post not found" },
-                { status: 404 },
+                { message: "Validation failed", errors },
+                { status: 400 },
             );
         }
 
-        const postData = postDoc.data() as { ownerId?: string };
-        if (!postData.ownerId || postData.ownerId !== user.uid) {
+        const result = await postsCollection.firestore.runTransaction(async (tx) => {
+            const snap = await tx.get(postRef);
+            if (!snap.exists) {
+                return { type: "NOT_FOUND" as const };
+            }
+
+            const current = snap.data() as { ownerId?: string; version?: number };
+            const currentVersion = current.version ?? 1;
+
+            if (current.ownerId !== user.uid) {
+                return { type: "FORBIDDEN" as const };
+            }
+
+            if (currentVersion !== parsed.data.expectedVersion) {
+                return {
+                    type: "CONFLICT" as const,
+                    currentVersion,
+                };
+            }
+
+            tx.delete(postRef);
+            return { type: "OK" as const };
+        });
+
+        if (result.type === "NOT_FOUND") {
+            return NextResponse.json({ message: "Post not found" }, { status: 404 });
+        }
+
+        if (result.type === "FORBIDDEN") {
             return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        }
+
+        if (result.type === "CONFLICT") {
+            return NextResponse.json(
+                {
+                    message: "Post was changed in another session",
+                    currentVersion: result.currentVersion,
+                },
+                { status: 409 },
+            );
         }
 
         const commentsSnap = await commentsCollection
             .where("postId", "==", id)
             .get();
-        const batch = postsCollection.firestore.batch();
+        const batch = commentsCollection.firestore.batch();
 
         commentsSnap.docs.forEach((doc) => batch.delete(doc.ref));
-        batch.delete(postRef);
         await batch.commit();
 
         return NextResponse.json({ ok: true }, { status: 200 });
