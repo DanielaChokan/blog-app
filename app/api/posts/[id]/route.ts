@@ -3,6 +3,7 @@ import { commentsCollection, postsCollection } from "@/lib/firebase-admin";
 import { deletePostSchema, updatePostSchema } from "@/lib/zod-schemas";
 import { flattenError } from "zod";
 import { requireUser } from "@/lib/server-auth";
+import { deleteCommentsByPostId } from "@/lib/firestore-utils";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -179,7 +180,6 @@ export async function DELETE(req: NextRequest, { params }: Params) {
                 };
             }
 
-            tx.delete(postRef);
             return { type: "OK" as const };
         });
 
@@ -201,13 +201,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
             );
         }
 
-        const commentsSnap = await commentsCollection
-            .where("postId", "==", id)
-            .get();
-        const batch = commentsCollection.firestore.batch();
-
-        commentsSnap.docs.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
+        await deleteCommentsByPostId(id);
+        await postRef.delete();
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {
