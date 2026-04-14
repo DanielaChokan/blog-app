@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { createCommentSchema } from "@/lib/zod-schemas";
 import { addCommentThunk } from "@/store/slices/postsSlice";
 import { useAppDispatch } from "@/store/hooks";
+import { getClientErrorMessage } from "@/lib/client-error";
 
 type CommentFormValues = {
     author: string;
@@ -32,7 +33,10 @@ export function useCommentForm(postId: string) {
             await dispatch(addCommentThunk({ postId, data: values })).unwrap();
             reset();
         } catch (submitError) {
-            const message = submitError instanceof Error ? submitError.message : "Failed to send comment";
+            const message = getClientErrorMessage(
+                submitError,
+                "Failed to send comment",
+            );
             setError("root", { message });
         }
     });

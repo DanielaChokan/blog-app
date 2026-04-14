@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { apiClient } from "@/lib/api-client";
+import { getClientErrorMessage } from "@/lib/client-error";
 import {
     Comment,
     CreateCommentDto,
@@ -25,40 +26,94 @@ const initialState: PostsState = {
     filter: "",
 };
 
-export const fetchPostsThunk = createAsyncThunk("posts/fetchAll", async () => {
-    return apiClient.getPosts() as Promise<Post[]>;
+export const fetchPostsThunk = createAsyncThunk<
+    Post[],
+    void,
+    { rejectValue: string }
+>("posts/fetchAll", async (_, { rejectWithValue }) => {
+    try {
+        return (await apiClient.getPosts()) as Post[];
+    } catch (error) {
+        return rejectWithValue(getClientErrorMessage(error, "Failed to fetch posts"));
+    }
 });
 
-export const createPostThunk = createAsyncThunk(
+export const createPostThunk = createAsyncThunk<
+    Post,
+    CreatePostDto,
+    { rejectValue: string }
+>(
     "posts/create",
-    async (payload: CreatePostDto) =>
-        apiClient.createPost(payload) as Promise<Post>,
-);
-
-export const fetchPostByIdThunk = createAsyncThunk(
-    "posts/fetchById",
-    async (id: string) =>
-        apiClient.getPostById(id) as Promise<PostWithComments>,
-);
-
-export const updatePostThunk = createAsyncThunk(
-    "posts/update",
-    async ({ id, data }: { id: string; data: UpdatePostDto }) =>
-        apiClient.updatePost(id, data) as Promise<Post>,
-);
-
-export const deletePostThunk = createAsyncThunk(
-    "posts/delete",
-    async ({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
-        await apiClient.deletePost(id, expectedVersion);
-        return id;
+    async (payload, { rejectWithValue }) => {
+        try {
+            return (await apiClient.createPost(payload)) as Post;
+        } catch (error) {
+            return rejectWithValue(
+                getClientErrorMessage(error, "Failed to create post"),
+            );
+        }
     },
 );
 
-export const addCommentThunk = createAsyncThunk(
+export const fetchPostByIdThunk = createAsyncThunk<
+    PostWithComments,
+    string,
+    { rejectValue: string }
+>(
+    "posts/fetchById",
+    async (id, { rejectWithValue }) => {
+        try {
+            return (await apiClient.getPostById(id)) as PostWithComments;
+        } catch (error) {
+            return rejectWithValue(getClientErrorMessage(error, "Failed to fetch post"));
+        }
+    },
+);
+
+export const updatePostThunk = createAsyncThunk<
+    Post,
+    { id: string; data: UpdatePostDto },
+    { rejectValue: string }
+>(
+    "posts/update",
+    async ({ id, data }, { rejectWithValue }) => {
+        try {
+            return (await apiClient.updatePost(id, data)) as Post;
+        } catch (error) {
+            return rejectWithValue(getClientErrorMessage(error, "Failed to update post"));
+        }
+    },
+);
+
+export const deletePostThunk = createAsyncThunk<
+    string,
+    { id: string; expectedVersion: number },
+    { rejectValue: string }
+>(
+    "posts/delete",
+    async ({ id, expectedVersion }, { rejectWithValue }) => {
+        try {
+            await apiClient.deletePost(id, expectedVersion);
+            return id;
+        } catch (error) {
+            return rejectWithValue(getClientErrorMessage(error, "Failed to delete post"));
+        }
+    },
+);
+
+export const addCommentThunk = createAsyncThunk<
+    Comment,
+    { postId: string; data: CreateCommentDto },
+    { rejectValue: string }
+>(
     "posts/addComment",
-    async ({ postId, data }: { postId: string; data: CreateCommentDto }) =>
-        apiClient.addComment(postId, data) as Promise<Comment>,
+    async ({ postId, data }, { rejectWithValue }) => {
+        try {
+            return (await apiClient.addComment(postId, data)) as Comment;
+        } catch (error) {
+            return rejectWithValue(getClientErrorMessage(error, "Failed to add comment"));
+        }
+    },
 );
 
 const postsSlice = createSlice({
@@ -84,7 +139,7 @@ const postsSlice = createSlice({
             })
             .addCase(fetchPostsThunk.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.error.message || "Failed to fetch posts";
+                state.error = action.payload ?? action.error.message ?? "Failed to fetch posts";
             })
             .addCase(createPostThunk.pending, (state) => {
                 state.error = null;
@@ -93,7 +148,7 @@ const postsSlice = createSlice({
                 state.posts.unshift(action.payload);
             })
             .addCase(createPostThunk.rejected, (state, action) => {
-                state.error = action.error.message || "Failed to create post";
+                state.error = action.payload ?? action.error.message ?? "Failed to create post";
             })
             .addCase(fetchPostByIdThunk.pending, (state) => {
                 state.loading = true;
@@ -105,7 +160,7 @@ const postsSlice = createSlice({
             })
             .addCase(fetchPostByIdThunk.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.error.message || "Failed to fetch post";
+                state.error = action.payload ?? action.error.message ?? "Failed to fetch post";
             })
             .addCase(updatePostThunk.fulfilled, (state, action) => {
                 state.posts = state.posts.map((p) =>
@@ -119,7 +174,7 @@ const postsSlice = createSlice({
                 }
             })
             .addCase(updatePostThunk.rejected, (state, action) => {
-                state.error = action.error.message || "Failed to update post";
+                state.error = action.payload ?? action.error.message ?? "Failed to update post";
             })
             .addCase(deletePostThunk.fulfilled, (state, action) => {
                 state.posts = state.posts.filter(
@@ -130,7 +185,7 @@ const postsSlice = createSlice({
                 }
             })
             .addCase(deletePostThunk.rejected, (state, action) => {
-                state.error = action.error.message || "Failed to delete post";
+                state.error = action.payload ?? action.error.message ?? "Failed to delete post";
             })
             .addCase(addCommentThunk.fulfilled, (state, action) => {
                 if (state.selectedPost) {
@@ -139,7 +194,7 @@ const postsSlice = createSlice({
                 }
             })
             .addCase(addCommentThunk.rejected, (state, action) => {
-                state.error = action.error.message || "Failed to add comment";
+                state.error = action.payload ?? action.error.message ?? "Failed to add comment";
             });
     },
 });

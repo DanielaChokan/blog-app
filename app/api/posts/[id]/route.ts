@@ -4,6 +4,13 @@ import { deletePostSchema, updatePostSchema } from "@/lib/zod-schemas";
 import { flattenError } from "zod";
 import { requireUser } from "@/lib/server-auth";
 import { deleteCommentsByPostId } from "@/lib/firestore-utils";
+import {
+    conflict,
+    forbidden,
+    fromUnknownError,
+    notFound,
+    validationError,
+} from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,10 +20,7 @@ export async function GET(_: NextRequest, { params }: Params) {
         const postDoc = await postsCollection.doc(id).get();
 
         if (!postDoc.exists) {
-            return NextResponse.json(
-                { message: "Post not found" },
-                { status: 404 },
-            );
+            return notFound("Post not found");
         }
 
         const commentsSnap = await commentsCollection
@@ -49,10 +53,7 @@ export async function GET(_: NextRequest, { params }: Params) {
             { status: 200 },
         );
     } catch (error) {
-        return NextResponse.json(
-            { message: "Failed to fetch post", error: String(error) },
-            { status: 500 },
-        );
+        return fromUnknownError(error, "Failed to fetch post");
     }
 }
 
@@ -66,10 +67,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
         if (!parsed.success) {
             const errors = flattenError(parsed.error);
-            return NextResponse.json(
-                { message: "Validation failed", errors },
-                { status: 400 },
-            );
+            return validationError("Validation failed", errors);
         }
 
         const result = await postsCollection.firestore.runTransaction(async (tx) => {
@@ -106,21 +104,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         });
 
         if (result.type === "NOT_FOUND") {
-            return NextResponse.json({ message: "Post not found" }, { status: 404 });
+            return notFound("Post not found");
         }
 
         if (result.type === "FORBIDDEN") {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+            return forbidden("Forbidden");
         }
 
         if (result.type === "CONFLICT") {
-            return NextResponse.json(
-                {
-                    message: "Post was changed in another session",
-                    currentVersion: result.currentVersion,
-                },
-                { status: 409 },
-            );
+            return conflict("Post was changed in another session", {
+                currentVersion: result.currentVersion,
+            });
         }
 
         const updated = await postRef.get();
@@ -130,16 +124,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             { status: 200 },
         );
     } catch (error) {
-        if (error instanceof Error && error.message === "UNAUTHORIZED") {
-            return NextResponse.json(
-                { message: "Unauthorized" },
-                { status: 401 },
-            );
-        }
-        return NextResponse.json(
-            { message: "Failed to update post", error: String(error) },
-            { status: 500 },
-        );
+        return fromUnknownError(error, "Failed to update post");
     }
 }
 
@@ -154,10 +139,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
         if (!parsed.success) {
             const errors = flattenError(parsed.error);
-            return NextResponse.json(
-                { message: "Validation failed", errors },
-                { status: 400 },
-            );
+            return validationError("Validation failed", errors);
         }
 
         const result = await postsCollection.firestore.runTransaction(async (tx) => {
@@ -180,41 +162,29 @@ export async function DELETE(req: NextRequest, { params }: Params) {
                 };
             }
 
+            tx.delete(postRef);
+
             return { type: "OK" as const };
         });
 
         if (result.type === "NOT_FOUND") {
-            return NextResponse.json({ message: "Post not found" }, { status: 404 });
+            return notFound("Post not found");
         }
 
         if (result.type === "FORBIDDEN") {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+            return forbidden("Forbidden");
         }
 
         if (result.type === "CONFLICT") {
-            return NextResponse.json(
-                {
-                    message: "Post was changed in another session",
-                    currentVersion: result.currentVersion,
-                },
-                { status: 409 },
-            );
+            return conflict("Post was changed in another session", {
+                currentVersion: result.currentVersion,
+            });
         }
 
         await deleteCommentsByPostId(id);
-        await postRef.delete();
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {
-        if (error instanceof Error && error.message === "UNAUTHORIZED") {
-            return NextResponse.json(
-                { message: "Unauthorized" },
-                { status: 401 },
-            );
-        }
-        return NextResponse.json(
-            { message: "Failed to delete post", error: String(error) },
-            { status: 500 },
-        );
+        return fromUnknownError(error, "Failed to delete post");
     }
 }

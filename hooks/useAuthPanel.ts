@@ -11,6 +11,7 @@ import {
 } from "firebase/auth";
 import { clientAuth } from "@/lib/firebase-client";
 import { useAuthUser } from "@/lib/use-auth-user";
+import { getClientErrorMessage } from "@/lib/client-error";
 
 export type AuthMode = "sign-in" | "sign-up";
 
@@ -61,10 +62,7 @@ export function useAuthPanel() {
             });
             setExpanded(false);
         } catch (submitError) {
-            const message =
-                submitError instanceof Error
-                    ? submitError.message
-                    : "Authentication failed";
+            const message = getClientErrorMessage(submitError, "Authentication failed");
             setError("root", { message });
         }
     });
@@ -75,10 +73,7 @@ export function useAuthPanel() {
             setSignOutPending(true);
             await signOut(clientAuth);
         } catch (signOutError) {
-            const message =
-                signOutError instanceof Error
-                    ? signOutError.message
-                    : "Sign out failed";
+            const message = getClientErrorMessage(signOutError, "Sign out failed");
             setError("root", { message });
         } finally {
             setSignOutPending(false);

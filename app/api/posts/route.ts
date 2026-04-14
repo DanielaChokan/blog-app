@@ -3,6 +3,7 @@ import { createPostSchema } from "@/lib/zod-schemas";
 import { postsCollection } from "@/lib/firebase-admin";
 import { flattenError } from "zod";
 import { requireUser } from "@/lib/server-auth";
+import { fromUnknownError, validationError } from "@/lib/api-errors";
 
 export async function GET() {
     try {
@@ -13,10 +14,7 @@ export async function GET() {
         });
         return NextResponse.json(posts, { status: 200 });
     } catch (error) {
-        return NextResponse.json(
-            { message: "Failed to fetch posts", error: String(error) },
-            { status: 500 },
-        );
+        return fromUnknownError(error, "Failed to fetch posts");
     }
 }
 
@@ -27,13 +25,7 @@ export async function POST(req: NextRequest) {
         const parsed = createPostSchema.safeParse(body);
 
         if (!parsed.success) {
-            return NextResponse.json(
-                {
-                    message: "Validation failed",
-                    errors: flattenError(parsed.error),
-                },
-                { status: 400 },
-            );
+            return validationError("Validation failed", flattenError(parsed.error));
         }
 
         const now = new Date().toISOString();
@@ -51,15 +43,6 @@ export async function POST(req: NextRequest) {
             { status: 201 },
         );
     } catch (error) {
-        if (error instanceof Error && error.message === "UNAUTHORIZED") {
-            return NextResponse.json(
-                { message: "Unauthorized" },
-                { status: 401 },
-            );
-        }
-        return NextResponse.json(
-            { message: "Failed to create post", error: String(error) },
-            { status: 500 },
-        );
+        return fromUnknownError(error, "Failed to create post");
     }
 }

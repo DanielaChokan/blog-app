@@ -7,6 +7,7 @@ import { createPostSchema } from "@/lib/zod-schemas";
 import { createPostThunk } from "@/store/slices/postsSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { useAuthUser } from "@/lib/use-auth-user";
+import { getClientErrorMessage } from "@/lib/client-error";
 
 const postFormSchema = z
     .object({
@@ -60,7 +61,7 @@ export function usePostForm() {
             await dispatch(createPostThunk(parsed)).unwrap();
             reset();
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
+            const message = getClientErrorMessage(error, "Failed to create post");
             setError("root", { message });
         }
     });

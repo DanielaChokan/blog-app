@@ -6,14 +6,44 @@ import {
     PostWithComments,
     UpdatePostDto,
 } from "@/types/blog";
+import { ApiErrorBody, ApiErrorCode } from "@/types/api-error";
 import { clientAuth } from "@/lib/firebase-client";
+
+export class ApiClientError extends Error {
+    status: number;
+    code?: ApiErrorCode;
+    details?: unknown;
+
+    constructor(status: number, message: string, code?: ApiErrorCode, details?: unknown) {
+        super(message);
+        this.name = "ApiClientError";
+        this.status = status;
+        this.code = code;
+        this.details = details;
+    }
+}
+
+const STATUS_FALLBACK_MESSAGE: Record<number, string> = {
+    401: "Unauthorized",
+    403: "Forbidden",
+    404: "Not found",
+    409: "Conflict",
+    422: "Validation failed",
+    500: "Internal server error",
+};
 
 async function safeJson<T>(res: Response): Promise<T> {
     if (!res.ok) {
-        const err = await res
+        const payload = (await res
             .json()
-            .catch(() => ({ message: "Request failed" }));
-        throw new Error(err.message || "Request failed");
+            .catch(() => ({}))) as Partial<ApiErrorBody>;
+
+        const message =
+            payload.message ||
+            STATUS_FALLBACK_MESSAGE[res.status] ||
+            `Request failed with status ${res.status}`;
+
+        throw new ApiClientError(res.status, message, payload.code, payload.details);
     }
     return res.json() as Promise<T>;
 }
