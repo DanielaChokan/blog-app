@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { createPostSchema } from "@/lib/zod-schemas";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { updatePostThunk } from "@/store/slices/postsSlice";
+import { useAppSelector } from "@/store/hooks";
+import { usePostActions } from "@/hooks/usePostActions";
 import { useAuthUser } from "@/lib/use-auth-user";
 import { flattenError } from "zod";
 import CommentForm from "./CommentForm";
@@ -12,7 +12,7 @@ import styles from "./PostDetail.module.css";
 type EditErrors = Partial<Record<"title" | "content", string>>;
 
 export default function PostDetail({ id }: { id: string }) {
-    const dispatch = useAppDispatch();
+    const { updatePost } = usePostActions();
     const { user } = useAuthUser();
     const { selectedPost: post, error } = useAppSelector((s) => s.posts);
 
@@ -57,15 +57,10 @@ export default function PostDetail({ id }: { id: string }) {
         setErrors({});
         try {
             setSaving(true);
-            await dispatch(
-                updatePostThunk({
-                    id,
-                    data: {
-                        ...parsed.data,
-                        expectedVersion: post.version,
-                    },
-                }),
-            ).unwrap();
+            await updatePost(id, {
+                ...parsed.data,
+                expectedVersion: post.version,
+            });
             setEditing(false);
         } finally {
             setSaving(false);

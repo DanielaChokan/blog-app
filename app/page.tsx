@@ -6,22 +6,11 @@ import PostForm from "@/components/PostForm";
 import PostList from "@/components/PostList";
 import AuthPanel from "@/components/AuthPanel";
 import { StoreProvider } from "@/store/provider";
-import { postsCollection } from "@/lib/firebase-admin";
-import { Post } from "@/types/blog";
+import { getInitialPostsServer } from "@/lib/services/posts.server";
 import styles from "./page.module.css";
 
-async function getInitialPosts(): Promise<Post[]> {
-	try {
-		const snap = await postsCollection.orderBy("createdAt", "desc").get();
-		return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Post, "id">) }));
-	} catch (error) {
-		console.error("Failed to load initial posts from Firestore:", error);
-		return [];
-	}
-}
-
 export default async function HomePage() {
-	const initialPosts = await getInitialPosts();
+	const initialPosts = await getInitialPostsServer();
 
 	return (
 		<main className={styles.main}>
