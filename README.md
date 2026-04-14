@@ -2,7 +2,7 @@
 
 ## 1. Project Description
 
-Blog Appis a single-page blog application where you can:
+Blog App is a single-page blog application where you can:
 
 - view a list of posts;
 - create new posts with field validation;
@@ -10,6 +10,14 @@ Blog Appis a single-page blog application where you can:
 - edit and delete posts;
 - add comments;
 - filter posts by title or author.
+- sign in with Firebase Authentication (email/password);
+- perform protected post updates/deletes only as a post owner.
+
+Additional behavior implemented in API:
+
+- optimistic concurrency control for post update/delete via expectedVersion;
+- conflict handling (409) when post version is stale;
+- automatic comment cleanup when deleting a post.
 
 ## 2. Technology Stack
 
@@ -17,7 +25,9 @@ Blog Appis a single-page blog application where you can:
 - React 19
 - TypeScript
 - Redux Toolkit + React Redux
+- React Hook Form + @hookform/resolvers
 - Firebase Firestore (via firebase-admin on the server)
+- Firebase Authentication (client + server token verification)
 - Zod (data validation)
 - Vitest + Testing Library (testing)
 - CSS Modules (styling)
@@ -36,6 +46,10 @@ npm i
 FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project-id.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+NEXT_PUBLIC_FIREBASE_API_KEY=your-web-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-web-app-id
 ```
 
 3. Start the development server:
@@ -53,9 +67,12 @@ http://localhost:3000
 ## 4. Architecture
 
 - App Router: pages and routes located in the app/ folder.
-- API Routes: server-side route handlers in app/api/posts/** for CRUD operations on posts and comments.
-- Redux: client-side state management in store/ (slices + thunks + provider).
+- API Routes: server-side route handlers in app/api/posts/** for CRUD operations on posts and comments, with ownership and version checks.
+- Redux: client-side state management in store/ (posts slice + provider).
 - Firestore: data storage via firebase-admin in lib/firebase-admin.ts.
+- Auth:
+	- client auth state and token usage in lib/use-auth-user.ts and components/AuthPanel.tsx;
+	- server token verification in lib/server-auth.ts (Bearer token).
 - Zod: shared client- and server-side validation using schemas in lib/zod-schemas.ts.
 
 ## 5. Tests and Coverage
@@ -81,7 +98,10 @@ npx vitest run --coverage
 Current tests cover:
 
 - basic validation of the post Zod schema;
-- form validation for creating a post with empty fields.
+- form validation for creating a post with empty fields;
+- API security checks for protected PATCH/DELETE operations;
+- API optimistic concurrency conflict handling (409);
+- utility behavior for batched comment deletion.
 
 ## 6. GitHub + Vercel
 
