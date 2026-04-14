@@ -1,131 +1,67 @@
 "use client";
 
-import { useState } from "react";
-import { createPostSchema } from "@/lib/zod-schemas";
-import { useAppSelector } from "@/store/hooks";
-import { usePostActions } from "@/hooks/usePostActions";
-import { useAuthUser } from "@/lib/use-auth-user";
-import { flattenError } from "zod";
+import { usePostDetail } from "@/hooks/usePostDetail";
 import CommentForm from "./CommentForm";
 import styles from "./PostDetail.module.css";
 
-type EditErrors = Partial<Record<"title" | "content", string>>;
-
 export default function PostDetail({ id }: { id: string }) {
-    const { updatePost } = usePostActions();
-    const { user } = useAuthUser();
-    const { selectedPost: post, error } = useAppSelector((s) => s.posts);
-
-    const [editing, setEditing] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
-    const [errors, setErrors] = useState<EditErrors>({});
-
-    function startEditing() {
-        if (!post || post.ownerId !== user?.uid) return;
-        setTitle(post.title);
-        setContent(post.content);
-        setErrors({});
-        setEditing(true);
-    }
+    const {
+        post,
+        error,
+        user,
+        editing,
+        register,
+        saveEdit,
+        errors,
+        isSubmitting,
+        startEditing,
+        cancelEditing,
+    } = usePostDetail(id);
 
     if (!post) return <p className={styles.error}>Post not found</p>;
-
-    async function saveEdit() {
-        if (!post || post.ownerId !== user?.uid) {
-            setErrors({ title: "You can edit only your own post." });
-            return;
-        }
-
-        const parsed = createPostSchema
-            .pick({ title: true, content: true })
-            .safeParse({
-                title,
-                content,
-            });
-
-        if (!parsed.success) {
-            const fieldErrors = flattenError(parsed.error).fieldErrors;
-            setErrors({
-                title: fieldErrors.title?.[0],
-                content: fieldErrors.content?.[0],
-            });
-            return;
-        }
-
-        setErrors({});
-        try {
-            setSaving(true);
-            await updatePost(id, {
-                ...parsed.data,
-                expectedVersion: post.version,
-            });
-            setEditing(false);
-        } finally {
-            setSaving(false);
-        }
-    }
 
     return (
         <article className={styles.article}>
             {error && <p className={styles.error}>Error: {error}</p>}
 
             {editing ? (
-                <div className={styles.editForm}>
+                <form className={styles.editForm} onSubmit={saveEdit}>
                     <input
-                        value={title}
-                        onChange={(e) => {
-                            setTitle(e.target.value);
-                            if (errors.title) {
-                                setErrors((prev) => ({
-                                    ...prev,
-                                    title: undefined,
-                                }));
-                            }
-                        }}
+                        {...register("title")}
                         className={styles.input}
                     />
-                    {errors.title && (
-                        <p className={styles.error}>{errors.title}</p>
+                    {errors.title?.message && (
+                        <p className={styles.error}>{errors.title.message}</p>
                     )}
                     <textarea
-                        value={content}
-                        onChange={(e) => {
-                            setContent(e.target.value);
-                            if (errors.content) {
-                                setErrors((prev) => ({
-                                    ...prev,
-                                    content: undefined,
-                                }));
-                            }
-                        }}
+                        {...register("content")}
                         className={styles.textarea}
                         rows={8}
                     />
-                    {errors.content && (
-                        <p className={styles.error}>{errors.content}</p>
+                    {errors.content?.message && (
+                        <p className={styles.error}>{errors.content.message}</p>
+                    )}
+                    {errors.root?.message && (
+                        <p className={styles.error}>{errors.root.message}</p>
                     )}
                     <div className={styles.actions}>
                         <button
-                            onClick={saveEdit}
+                            type="submit"
                             className={styles.primaryButton}
-                            disabled={saving}
+                            disabled={isSubmitting}
                         >
-                            {saving ? "Saving..." : "Save"}
+                            {isSubmitting ? "Saving..." : "Save"}
                         </button>
                         <button
-                            onClick={() => {
-                                setEditing(false);
-                                setErrors({});
-                            }}
+                            type="button"
+                            onClick={cancelEditing}
                             className={styles.secondaryButton}
-                            disabled={saving}
+                            disabled={isSubmitting}
                         >
                             Cancel
                         </button>
                     </div>
-                </div>
+                </form>
             ) : (
                 <>
                     <h1 className={styles.heading}>{post.title}</h1>
