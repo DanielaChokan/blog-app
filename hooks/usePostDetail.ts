@@ -51,7 +51,7 @@ export function usePostDetail(id: string, initialData?: PostWithComments) {
         try {
             await updatePost({...values, expectedVersion: post.version});
             setEditing(false);
-        } catch (error) {
+        } catch {
             setError("root", { message: "Failed to save changes. Try again." });
         }
         
