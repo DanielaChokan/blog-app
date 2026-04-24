@@ -19,7 +19,7 @@ Additional API behavior:
 
 - optimistic concurrency control for post update/delete via expectedVersion;
 - conflict handling (409) when post version is stale;
-- automatic comment cleanup when deleting a post.
+- soft delete for posts; related comments are not physically deleted, but become inaccessible through business-logic filtering.
 
 ## 2. Technology Stack
 
@@ -104,7 +104,7 @@ Current tests cover:
 - SWR hook behavior for posts (optimistic create, rollback on delete error, revalidation after 409 conflict);
 - API security checks for protected PATCH/DELETE operations;
 - API optimistic concurrency conflict handling (409);
-- utility behavior for batched comment deletion.
+- soft-delete guard behavior (deleted posts are treated as unavailable in API flows).
 
 ## 6. GitHub + Vercel
 

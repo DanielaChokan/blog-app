@@ -4,6 +4,7 @@ export const revalidate = 0;
 import PostFilters from "@/components/PostFilters";
 import PostForm from "@/components/PostForm";
 import PostList from "@/components/PostList";
+import { PostFilterProvider } from "@/lib/post-filter-context";
 
 export default function HomePage() {
     return (
@@ -13,10 +14,12 @@ export default function HomePage() {
                     <PostForm />
                 </section>
 
-                <section>
-                    <PostFilters />
-                    <PostList />
-                </section>
+                <PostFilterProvider>
+                    <section>
+                        <PostFilters />
+                        <PostList />
+                    </section>
+                </PostFilterProvider>
             </div>
         </div>
     );

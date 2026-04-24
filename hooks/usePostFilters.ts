@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { usePosts } from "@/hooks/usePosts";
+import { usePostFilterContext } from "@/lib/post-filter-context";
 
 export function usePostFilters() {
     const { posts } = usePosts();
-    const [filter, setFilter] = useState("");
+    const { filter, setFilter } = usePostFilterContext();
 
     const filteredPosts = useMemo(() => {
         const normalized = filter.trim().toLowerCase();
