@@ -24,7 +24,7 @@ Additional behavior implemented in API:
 - Next.js 16 (App Router)
 - React 19
 - TypeScript
-- Redux Toolkit + React Redux
+- SWR (data fetching and cache)
 - React Hook Form + @hookform/resolvers
 - Firebase Firestore (via firebase-admin on the server)
 - Firebase Authentication (client + server token verification)
@@ -68,7 +68,7 @@ http://localhost:3000
 
 - App Router: pages and routes located in the app/ folder.
 - API Routes: server-side route handlers in app/api/posts/** for CRUD operations on posts and comments, with ownership and version checks.
-- Redux: client-side state management in store/ (posts slice + provider).
+- SWR: client-side data fetching with stale-while-revalidate, deduplication, and optimistic updates.
 - Firestore: data storage via firebase-admin in lib/firebase-admin.ts.
 - Auth:
 	- client auth state and token usage in lib/use-auth-user.ts and components/AuthPanel.tsx;
@@ -99,6 +99,7 @@ Current tests cover:
 
 - basic validation of the post Zod schema;
 - form validation for creating a post with empty fields;
+- SWR hook behavior for posts (optimistic create, rollback on delete error, revalidation after 409 conflict);
 - API security checks for protected PATCH/DELETE operations;
 - API optimistic concurrency conflict handling (409);
 - utility behavior for batched comment deletion.

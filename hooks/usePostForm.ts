@@ -4,8 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createPostSchema } from "@/lib/zod-schemas";
-import { createPostThunk } from "@/store/slices/postsSlice";
-import { useAppDispatch } from "@/store/hooks";
+import { usePosts } from "@/hooks/usePosts";
 import { useAuthUser } from "@/lib/use-auth-user";
 import { getClientErrorMessage } from "@/lib/client-error";
 
@@ -30,7 +29,7 @@ const postFormSchema = z
 type PostFormValues = z.input<typeof postFormSchema>;
 
 export function usePostForm() {
-    const dispatch = useAppDispatch();
+    const { createPost } = usePosts();
     const { user, loading } = useAuthUser();
 
     const {
@@ -58,7 +57,7 @@ export function usePostForm() {
         const parsed = postFormSchema.parse(values);
 
         try {
-            await dispatch(createPostThunk(parsed)).unwrap();
+            await createPost(parsed);
             reset();
         } catch (error) {
             const message = getClientErrorMessage(error, "Failed to create post");
@@ -66,12 +65,5 @@ export function usePostForm() {
         }
     });
 
-    return {
-        register,
-        onSubmit,
-        errors,
-        isSubmitting,
-        loading,
-        user,
-    };
+    return { register, onSubmit, errors, isSubmitting, loading, user };
 }

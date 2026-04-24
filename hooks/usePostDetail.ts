@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { createPostSchema } from "@/lib/zod-schemas";
-import { useAppSelector } from "@/store/hooks";
-import { usePostActions } from "@/hooks/usePostActions";
+import { usePostDetailSWR } from "@/hooks/usePostDetailSWR";
 import { useAuthUser } from "@/lib/use-auth-user";
+import { PostWithComments } from "@/types/blog";
 
 const editPostSchema = createPostSchema.pick({ title: true, content: true });
 
@@ -15,10 +15,9 @@ type EditFormValues = {
     content: string;
 };
 
-export function usePostDetail(id: string) {
-    const { updatePost } = usePostActions();
+export function usePostDetail(id: string, initialData?: PostWithComments) {
+    const { post, error, updatePost } = usePostDetailSWR(id, initialData);
     const { user } = useAuthUser();
-    const { selectedPost: post, error } = useAppSelector((s) => s.posts);
     const [editing, setEditing] = useState(false);
 
     const {
@@ -49,12 +48,13 @@ export function usePostDetail(id: string) {
             setError("root", { message: "You can edit only your own post." });
             return;
         }
-
-        await updatePost(id, {
-            ...values,
-            expectedVersion: post.version,
-        });
-        setEditing(false);
+        try {
+            await updatePost({...values, expectedVersion: post.version});
+            setEditing(false);
+        } catch (error) {
+            setError("root", { message: "Failed to save changes. Try again." });
+        }
+        
     });
 
     function cancelEditing() {
@@ -66,16 +66,5 @@ export function usePostDetail(id: string) {
         });
     }
 
-    return {
-        post,
-        error,
-        user,
-        editing,
-        register,
-        saveEdit,
-        errors,
-        isSubmitting,
-        startEditing,
-        cancelEditing,
-    };
+    return { post, error, user, editing, register, saveEdit, errors, isSubmitting, startEditing, cancelEditing };
 }

@@ -3,8 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { createCommentSchema } from "@/lib/zod-schemas";
-import { addCommentThunk } from "@/store/slices/postsSlice";
-import { useAppDispatch } from "@/store/hooks";
+import { usePostDetailSWR } from "@/hooks/usePostDetailSWR";
 import { getClientErrorMessage } from "@/lib/client-error";
 
 type CommentFormValues = {
@@ -13,7 +12,7 @@ type CommentFormValues = {
 };
 
 export function useCommentForm(postId: string) {
-    const dispatch = useAppDispatch();
+    const { addComment } = usePostDetailSWR(postId);
     const {
         register,
         handleSubmit,
@@ -30,7 +29,7 @@ export function useCommentForm(postId: string) {
 
     const onSubmit = handleSubmit(async (values) => {
         try {
-            await dispatch(addCommentThunk({ postId, data: values })).unwrap();
+            await addComment( values );
             reset();
         } catch (submitError) {
             const message = getClientErrorMessage(
@@ -41,10 +40,5 @@ export function useCommentForm(postId: string) {
         }
     });
 
-    return {
-        register,
-        onSubmit,
-        errors,
-        isSubmitting,
-    };
+    return { register, onSubmit, errors, isSubmitting };
 }

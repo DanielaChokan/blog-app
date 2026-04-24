@@ -2,9 +2,10 @@
 
 import { usePostDetail } from "@/hooks/usePostDetail";
 import CommentForm from "./CommentForm";
+import { PostWithComments } from "@/types/blog";
 import styles from "./PostDetail.module.css";
 
-export default function PostDetail({ id }: { id: string }) {
+export default function PostDetail({ id, initialData }: { id: string; initialData?: PostWithComments }) {
     const {
         post,
         error,
@@ -16,7 +17,7 @@ export default function PostDetail({ id }: { id: string }) {
         isSubmitting,
         startEditing,
         cancelEditing,
-    } = usePostDetail(id);
+    } = usePostDetail(id, initialData);
 
     if (!post) return <p className={styles.error}>Post not found</p>;
 
