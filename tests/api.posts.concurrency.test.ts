@@ -20,10 +20,6 @@ vi.mock("@/lib/firebase-admin", () => ({
     commentsCollection: {},
 }));
 
-vi.mock("@/lib/firestore-utils", () => ({
-    deleteCommentsByPostId: vi.fn(),
-}));
-
 import { PATCH } from "@/app/api/posts/[id]/route";
 
 describe("posts/[id] concurrency", () => {

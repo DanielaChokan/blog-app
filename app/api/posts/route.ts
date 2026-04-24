@@ -7,7 +7,10 @@ import { fromUnknownError, validationError } from "@/lib/api-errors";
 
 export async function GET() {
     try {
-        const snap = await postsCollection.orderBy("createdAt", "desc").get();
+        const snap = await postsCollection
+            .where("isDeleted", "==", false)
+            .orderBy("createdAt", "desc")
+            .get();
         const posts = snap.docs.map((doc) => {
             const data = doc.data() as { version?: number };
             return { id: doc.id, ...data, version: data.version ?? 1 };
@@ -32,6 +35,7 @@ export async function POST(req: NextRequest) {
         const payload = {
             ...parsed.data,
             ownerId: user.uid,
+            isDeleted: false,
             version: 1,
             createdAt: now,
             updatedAt: now,

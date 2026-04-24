@@ -4,15 +4,10 @@ const mocks = vi.hoisted(() => ({
     requireUser: vi.fn(),
     runTransaction: vi.fn(),
     doc: vi.fn(),
-    deleteCommentsByPostId: vi.fn(),
 }));
 
 vi.mock("@/lib/server-auth", () => ({
     requireUser: mocks.requireUser,
-}));
-
-vi.mock("@/lib/firestore-utils", () => ({
-    deleteCommentsByPostId: mocks.deleteCommentsByPostId,
 }));
 
 vi.mock("@/lib/firebase-admin", () => ({
@@ -56,6 +51,33 @@ describe("posts/[id] security", () => {
         });
     });
 
+    it("returns 404 for DELETE when post is already soft-deleted", async () => {
+        mocks.requireUser.mockResolvedValueOnce({ uid: "owner-1" });
+
+        const postRef = { id: "post-1" };
+        const tx = {
+            get: vi.fn().mockResolvedValue({
+                exists: true,
+                data: () => ({ ownerId: "owner-1", version: 1, isDeleted: true }),
+            }),
+            update: vi.fn(),
+        };
+
+        mocks.doc.mockReturnValue(postRef);
+        mocks.runTransaction.mockImplementationOnce(async (cb: (txArg: unknown) => unknown) =>
+            cb(tx),
+        );
+
+        const res = await DELETE(
+            makeRequest("DELETE", { expectedVersion: 1 }) as never,
+            { params: Promise.resolve({ id: "post-1" }) },
+        );
+
+        expect(res.status).toBe(404);
+        await expect(res.json()).resolves.toMatchObject({ code: "NOT_FOUND" });
+        expect(tx.update).not.toHaveBeenCalled();
+    });
+
     it("returns 403 for DELETE when trying to remove чужий post", async () => {
         mocks.requireUser.mockResolvedValueOnce({ uid: "owner-1" });
 
@@ -83,6 +105,5 @@ describe("posts/[id] security", () => {
             code: "FORBIDDEN",
         });
         expect(tx.delete).not.toHaveBeenCalled();
-        expect(mocks.deleteCommentsByPostId).not.toHaveBeenCalled();
     });
 });

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { commentsCollection, postsCollection } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { deletePostSchema, updatePostSchema } from "@/lib/zod-schemas";
 import { flattenError } from "zod";
 import { requireUser } from "@/lib/server-auth";
-import { deleteCommentsByPostId } from "@/lib/firestore-utils";
 import {
     conflict,
     forbidden,
@@ -20,6 +20,11 @@ export async function GET(_: NextRequest, { params }: Params) {
         const postDoc = await postsCollection.doc(id).get();
 
         if (!postDoc.exists) {
+            return notFound("Post not found");
+        }
+
+        const postMeta = postDoc.data() as { deletedAt?: FirebaseFirestore.Timestamp; isDeleted?: boolean };
+        if (postMeta.isDeleted) {
             return notFound("Post not found");
         }
 
@@ -76,7 +81,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
                 return { type: "NOT_FOUND" as const };
             }
 
-            const current = snap.data() as { ownerId?: string; version?: number };
+            const current = snap.data() as { ownerId?: string; version?: number; deletedAt?: FirebaseFirestore.Timestamp; isDeleted?: boolean };
+            if (current.isDeleted){
+                return { type: "NOT_FOUND" as const };
+            }
             const currentVersion = current.version ?? 1;
 
             if (current.ownerId !== user.uid) {
@@ -148,7 +156,12 @@ export async function DELETE(req: NextRequest, { params }: Params) {
                 return { type: "NOT_FOUND" as const };
             }
 
-            const current = snap.data() as { ownerId?: string; version?: number };
+            const current = snap.data() as { ownerId?: string; version?: number; deletedAt?: FirebaseFirestore.Timestamp; isDeleted?: boolean };
+
+            if (current.isDeleted) {
+                return { type: "NOT_FOUND" as const };
+            }
+
             const currentVersion = current.version ?? 1;
 
             if (current.ownerId !== user.uid) {
@@ -162,7 +175,12 @@ export async function DELETE(req: NextRequest, { params }: Params) {
                 };
             }
 
-            tx.delete(postRef);
+            tx.update(postRef, {
+                isDeleted: true,
+                deletedAt: FieldValue.serverTimestamp(),
+                deletedBy: user.uid,
+                version: currentVersion + 1,
+            });
 
             return { type: "OK" as const };
         });
@@ -180,8 +198,6 @@ export async function DELETE(req: NextRequest, { params }: Params) {
                 currentVersion: result.currentVersion,
             });
         }
-
-        await deleteCommentsByPostId(id);
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {

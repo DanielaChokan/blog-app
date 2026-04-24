@@ -9,11 +9,6 @@ type Params = { params: Promise<{ id: string }> };
 export async function POST(req: NextRequest, { params }: Params) {
 	try {
 		const { id: postId } = await params;
-		const postDoc = await postsCollection.doc(postId).get();
-
-		if (!postDoc.exists) {
-			return notFound("Post not found");
-		}
 
 		const body = await req.json();
 		const parsed = createCommentSchema.safeParse(body);
@@ -28,8 +23,29 @@ export async function POST(req: NextRequest, { params }: Params) {
 			createdAt: new Date().toISOString(),
 		};
 
-		const doc = await commentsCollection.add(payload);
-		return NextResponse.json({ id: doc.id, ...payload }, { status: 201 });
+		const commentRef = commentsCollection.doc();
+        
+        const result = await commentsCollection.firestore.runTransaction(async (tx) => {
+            const postSnap = await tx.get(postsCollection.doc(postId));
+
+            if (!postSnap.exists) {
+                return { type: "NOT_FOUND" as const };
+            }
+
+			const postData = postSnap.data() as { deletedAt?: FirebaseFirestore.Timestamp; isDeleted?: boolean };
+			if (postData.isDeleted) {
+                return { type: "NOT_FOUND" as const };
+            }
+
+            tx.set(commentRef, payload);
+            return { type: "OK" as const };
+        });
+
+        if (result.type === "NOT_FOUND") {
+            return notFound("Post not found");
+        }
+
+		return NextResponse.json({ id: commentRef.id, ...payload }, { status: 201 });
 	} catch (error) {
 		return fromUnknownError(error, "Failed to add comment");
 	}
